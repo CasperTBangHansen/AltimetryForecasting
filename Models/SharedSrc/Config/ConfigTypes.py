@@ -131,6 +131,7 @@ class Process:
     process: str
     kwargs: Dict[str, Any]
     function: Pipeline
+    result: Any = Field(default_factory=lambda: None)
 
     def __post_init__(self,):
         self.kwargs = parse_kwargs(self.kwargs)

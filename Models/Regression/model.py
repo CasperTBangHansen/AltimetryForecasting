@@ -196,7 +196,7 @@ class MetaRegression:
         valid_parameters = None
 
         model_id = 0
-        for i in range(y.shape[self.invert_dim]):
+        for i in range(y.shape[self.dim]):
             d = self.dim_lookup(y, i)
             mask = ~np.isnan(d)
             

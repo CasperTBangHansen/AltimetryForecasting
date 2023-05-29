@@ -2,7 +2,6 @@ from .ModelProtocol import (
     FitModelRegressor,
     FitModelClassifier,
     SaveModel,
-    Statistics,
     BaseClassifier,
     BaseRegressor,
     NotFittedError

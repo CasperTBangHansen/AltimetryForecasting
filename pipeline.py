@@ -1,19 +1,18 @@
-from Models import _types, Config, MainDataClass
-from typing import List, Tuple
-import xarray as xr
-from pathlib import Path
+from Models import Config, MainDataClass
+from typing import List
 
-def pipeline(data_path: Path, stages: List[Config.Stage]):
+def pipeline(main_config: Config.MainConfig, stages: List[Config.Stage]):
     
     # Load data
-    data = MainDataClass(data_path)
+    data = MainDataClass(main_config.paths.grid_path)
 
     for stage in stages:
+        if stage.name != 'fit':
+            continue
         print(f"Stage: {stage.name}")
         for task in stage.tasks:
             print(f"\tTask: {task.name}")
             for process in task.processes:
-                kwargs_str = ", ".join([str(v) for v in process.kwargs.values()])
-                print(f"\t\tProcess: {process.process}({kwargs_str})")
+                process.result = process.function(data, main_config.paths.saved_models, process.kwargs)
             print("")
         print("")

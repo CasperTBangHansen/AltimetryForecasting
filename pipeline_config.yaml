@@ -1,11 +1,11 @@
 # Functions used in pipeline and macros
 functions:
-  - Regression(type, deg, name, load, save)
+  - Regression(fit_type, deg, period, name, load, save)
 
 # Macros for pipeline
 macros:
   - RegressionYearly(name, load, save):
-    - Regression(("poly", "fourier"), (1, 1), name, load, save)
+    - Regression(("poly", "fourier"), (1, 1), 1, name, load, save)
 
 # Pipeline
 pipeline:
@@ -21,11 +21,11 @@ pipeline:
         load: False
         save: True
 
-  stage1:
+  fit:
     parallel: True
     1:
       - macro: RegressionYearly(class1, False, False)
     2:
       - macro: RegressionYearly(class2, False, False)
-      - Regression(poly, 1, class22, False, False)
+      - Regression("poly", 1, 1, class22, False, False)
 
