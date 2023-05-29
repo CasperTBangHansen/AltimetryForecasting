@@ -1,11 +1,15 @@
 from Models import _types, Config
-from Models.AreaClassification import pipeline_area_classification
 from typing import List, Tuple
+import xarray as xr
 from numpy.typing import NDArray
 import numpy as np
 from pathlib import Path
 
 def load_data(data_path: Path) -> Tuple[_types.float_like, _types.float_like, NDArray[np.datetime64], _types.float_like]:
+    """ Load netcdf file and gets the attributes"""
+    data = xr.open_dataset(data_path, engine='netcdf')
+    lats = data.Latitude
+    lons = data.Longitude
     return 0 # type: ignore
 
 def pipeline(data_path: Path, stages: List[Config.Stage]):

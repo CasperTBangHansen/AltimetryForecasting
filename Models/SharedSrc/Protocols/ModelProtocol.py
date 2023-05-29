@@ -15,12 +15,12 @@ class FitModelRegressor(Protocol):
         """
         ...
 
-    def fit(self, x: _types.float_like) -> None:
-        """Fits the model"""
+    def fit(self, x: _types.float_like, y: _types.float_like) -> None:
+        """Fits the model x ~ y"""
         ...
     
     def predict(self, x: _types.float_like) -> _types.float_like:
-        """ Makes a prediction on X"""
+        """ Makes a prediction using x"""
         ...
 
 class FitModelClassifier(Protocol):

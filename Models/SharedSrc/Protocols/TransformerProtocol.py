@@ -13,11 +13,11 @@ class Transformer(Protocol):
         """
         ...
 
-    def fit(self, features: _types.float_like) -> None:
+    def fit(self, x: _types.float_like) -> None:
         """Fits the model"""
         ...
     
-    def transform(self, features: _types.float_like) -> _types.float_like:
+    def transform(self, x: _types.float_like) -> _types.float_like:
         """ Makes a prediction on X"""
         ...
 
