@@ -1,7 +1,7 @@
-from typing import Protocol, Self, BinaryIO
+from typing import Protocol, Self, BinaryIO, Dict, Any
 from .. import _types
 
-__all__ = ["FitModelRegressor", "FitModelClassifier", "SaveModel", "Statistics", "BaseRegressor", "BaseClassifier", "NotFittedError"]
+__all__ = ["FitModelRegressor", "FitModelClassifier", "SaveModel", "BaseRegressor", "BaseClassifier", "NotFittedError"]
 
 
 class FitModelRegressor(Protocol):
@@ -23,6 +23,15 @@ class FitModelRegressor(Protocol):
         """ Makes a prediction using x"""
         ...
 
+    @classmethod
+    def set_parameters(cls, parameters: Dict[str, Any]) -> Self:
+        """Reinitialize instance of class"""
+        ...
+
+    def get_parameters(self) -> Dict[str, Any]:
+        """Return parameters to reconstruct instance of class"""
+        ...
+
 class FitModelClassifier(Protocol):
     """Protocal for fitting and prediciting using the model"""
 
@@ -42,13 +51,6 @@ class FitModelClassifier(Protocol):
         """ Makes a prediction on X"""
         ...
 
-class Statistics(Protocol):
-    """Protocol for computing the statistics"""
-
-    def summary(self) -> str:
-        """ Creates a summary of the model"""
-        ...
-
 
 class SaveModel(Protocol):
     """ Load and save model"""
@@ -62,11 +64,11 @@ class SaveModel(Protocol):
         """Loads the model from a file"""
         ...
 
-class BaseRegressor(FitModelRegressor, Statistics, SaveModel, Protocol):
+class BaseRegressor(FitModelRegressor, SaveModel, Protocol):
     """ Base regressor implementation"""
     ...
 
-class BaseClassifier(FitModelClassifier, Statistics, SaveModel, Protocol):
+class BaseClassifier(FitModelClassifier, SaveModel, Protocol):
     """ Base classifier implementation"""
     ...
 

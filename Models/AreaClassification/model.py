@@ -60,13 +60,6 @@ class AreaClassification:
             raise Protocols.NotFittedError("Fit must be called before predict")
         _features_scaled = self._transformer.transform(features)
         return self._som.predict(_features_scaled)
-
-    def summary(self) -> str:
-        """Makes a summary of the class"""
-        if self._trained:
-            return "Model is trained"
-        else:
-            return "Model not trained"
     
     def save(self, file: BinaryIO) -> None:
         """ Saves model to a file"""

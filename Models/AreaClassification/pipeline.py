@@ -18,7 +18,7 @@ def pipeline(
         data: MainDataClass,
         path: Path,
         kwargs: Dict[str, Any]
-        ) -> _types.int_like:
+    ) -> _types.int_like:
     som_m, som_n, epochs, load, save, transformer = parse_kwargs(kwargs)
     if load:
         # Model model
