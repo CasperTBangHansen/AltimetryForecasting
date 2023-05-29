@@ -10,7 +10,7 @@ def main():
     }
     main_config = Config.parse_main_config(Path('main_config.yaml'))
     config = Config.parse_config(Path('pipeline_config.yaml'), functions_mapping)
-    pipeline(Path('.'), config)
+    pipeline(main_config.paths.grid_path, config)
 
 if __name__ == '__main__':
     main()
