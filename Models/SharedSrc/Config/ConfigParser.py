@@ -2,7 +2,7 @@ from typing import Dict, Any, List, Mapping
 from pathlib import Path
 from datetime import date
 from yaml import safe_load
-from .._types import Pipeline
+from .. import Pipeline
 from .ConfigTypes import MainConfig, Versions, Paths, _Function, _Macro, Task, Process, Stage
 from .Converter import to_function
 

@@ -4,8 +4,8 @@ versions:
 
 # Paths
 paths:
-  grid_path: "Data/Grids/FILE.nc"
-  saved_models: "Models/"
+  grid_path: "Data/Grids/without_polar_v5_mss21.nc"
+  saved_models: "SavedModels/"
 
 # Train test split
 train_test_split: "2017-01-01"

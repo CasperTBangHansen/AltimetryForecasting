@@ -1,7 +1,7 @@
 import re
 from typing import Mapping
 from sklearn import preprocessing
-from .. import Protocols, _types
+from .. import Protocols, Pipeline
 
 def is_bool(string: str) -> bool:
     """ Checks if a string is a boolean. Ignores upper and lower case"""
@@ -59,7 +59,7 @@ def to_transformer(string: str) -> Protocols.BaseTransformer:
         return Protocols.SklearnTransformer(preprocessing.StandardScaler())
     raise ValueError("Invalid transformer")
 
-def to_function(string: str, functions: Mapping[str, _types.Pipeline]) -> _types.Pipeline:
+def to_function(string: str, functions: Mapping[str, Pipeline]) -> Pipeline:
     """Converts a string to a function"""
     lower = string.lower()
     if (val := functions.get(lower)) is not None:

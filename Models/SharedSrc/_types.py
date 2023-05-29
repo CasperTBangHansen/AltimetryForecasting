@@ -1,9 +1,8 @@
 import numpy as np
 from numpy.typing import NDArray
-from typing import Callable, Any, Dict
-from pathlib import Path
 
-__all__ = ['float_like', 'int_like', 'bool_like', 'Pipeline']
+
+__all__ = ["float_like", "int_like", "bool_like"]
 
 float_like = (
     NDArray[np.float64] |
@@ -21,6 +20,3 @@ int_like = (
 time_like = NDArray[np.datetime64]
 
 bool_like = NDArray[np.bool_]
-
-# Pipeline
-Pipeline = Callable[[float_like, float_like, NDArray[np.datetime64], float_like, Path, Dict[str, Any]], Any]

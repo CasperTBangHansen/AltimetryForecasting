@@ -1,6 +1,4 @@
-from .. import Protocols, _types
-from numpy.typing import NDArray
-import numpy as np
+from .. import Protocols, _types, MainDataClass
 from .model import AreaClassification
 from sklearn import preprocessing
 from pathlib import Path
@@ -17,10 +15,7 @@ def parse_kwargs(kwargs: Dict[str, Any]) -> Tuple[int, int, int, bool, bool, Pro
     return som_m, som_n, epochs, load, save, transformer
     
 def pipeline(
-        lat: _types.float_like,
-        lon: _types.float_like,
-        time: NDArray[np.datetime64],
-        features: _types.float_like,
+        data: MainDataClass,
         path: Path,
         kwargs: Dict[str, Any]
         ) -> _types.int_like:
@@ -32,10 +27,10 @@ def pipeline(
     else:
         # Create and fit model
         classifier = AreaClassification(transformer, som_m, som_n, epochs)
-        classifier.fit(features)
+        classifier.fit(data.sla)
         if save:
             with open(path, 'wb') as file:
                 classifier.save(file)
 
     # Predict
-    return classifier.predict(features)
+    return classifier.predict(data.sla)

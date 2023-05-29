@@ -4,8 +4,8 @@ from pathlib import Path
 from datetime import date
 import ast
 from typing import List, Tuple, Dict, Any
-from .. import _types
 from . import Converter
+from .. import Pipeline
 
 
 def parse_kwargs(kwargs: Dict[str, str]) -> Dict[str, Any]:
@@ -130,7 +130,7 @@ class _Macro:
 class Process:
     process: str
     kwargs: Dict[str, Any]
-    function: _types.Pipeline
+    function: Pipeline
 
     def __post_init__(self,):
         self.kwargs = parse_kwargs(self.kwargs)
