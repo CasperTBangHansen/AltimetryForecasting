@@ -19,7 +19,7 @@ class FitModelRegressor(Protocol):
         """Fits the model x ~ y"""
         ...
     
-    def predict(self, x: _types.float_like) -> _types.float_like:
+    def predict(self, x: _types.float_like | _types.time_like) -> _types.float_like:
         """ Makes a prediction using x"""
         ...
 
