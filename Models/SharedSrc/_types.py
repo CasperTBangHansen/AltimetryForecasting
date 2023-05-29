@@ -18,6 +18,8 @@ int_like = (
     NDArray[np.int8]
 )
 
+time_like = NDArray[np.datetime64]
+
 bool_like = NDArray[np.bool_]
 
 # Pipeline

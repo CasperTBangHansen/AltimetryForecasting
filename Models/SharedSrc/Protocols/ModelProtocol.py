@@ -15,7 +15,7 @@ class FitModelRegressor(Protocol):
         """
         ...
 
-    def fit(self, x: _types.float_like, y: _types.float_like) -> None:
+    def fit(self, x: _types.float_like | _types.time_like, y: _types.float_like) -> None:
         """Fits the model x ~ y"""
         ...
     
