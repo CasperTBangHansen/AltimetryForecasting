@@ -1,8 +1,6 @@
 import numpy as np
 import pickle
-
 from typing import List, Tuple, BinaryIO, Self, Dict, Any, Type, Literal
-from collections import defaultdict
 from .. import _types, Protocols
 
 
@@ -18,9 +16,15 @@ class Regression:
         elif isinstance(fit_type, tuple) and isinstance(deg, tuple):
             if len(fit_type) != len(deg):
                 raise ValueError(f"Number of types and degrees must match.")
-        self.fit_type = fit_type # type(s) of regression
-        self.deg = deg # degree for (each) type of regression
-        self.period = period # period of harmonic fits. P=1 means deg=1 is yearly period
+        
+        # type(s) of regression
+        self.fit_type = fit_type
+
+        # degree for (each) type of regression
+        self.deg = deg
+
+        # period of harmonic fits. P=1 means deg=1 is yearly period
+        self.period = period
         self.coefs = None
         self._trained = False
 
@@ -44,7 +48,8 @@ class Regression:
         
         length = 1
         if isinstance(deg, int) and isinstance(fit_type, str):
-            length += 2*deg if fit_type=="fourier" else 1*deg
+            mult = 2 if fit_type == "fourier" else 1
+            length += deg * mult
         elif isinstance(deg, int) and isinstance(fit_type, tuple):
             for t in fit_type:
                 length += Regression.coef_length(t, deg) - 1
@@ -71,15 +76,15 @@ class Regression:
     def find_kernel_structure(self) -> List[Tuple[str,int]]:
         """Determine kernel structure from input fit type and degree"""
         if isinstance(self.fit_type, str) and isinstance(self.deg, int):
-            kernel_elements = [(self.fit_type,deg) for deg in range(1,self.deg+1)]
+            kernel_elements = [(self.fit_type, deg) for deg in range(1, self.deg+1)]
         elif isinstance(self.fit_type, tuple) and isinstance(self.deg, int):
-            kernel_elements = [(ft,deg) for deg in range(1,self.deg+1) for ft in self.fit_type]
+            kernel_elements = [(ft, deg) for deg in range(1 ,self.deg+1) for ft in self.fit_type]
         elif isinstance(self.fit_type, str) and isinstance(self.deg, tuple):
             raise ValueError(f"Multiple degrees, but only one type given. Lengths must match")
         elif isinstance(self.fit_type, tuple) and isinstance(self.deg, tuple):
             kernel_elements = []
             for ft,deg in zip(self.fit_type, self.deg):
-                kernel_elements.extend([(ft,d) for d in range(1,deg+1)])
+                kernel_elements.extend([(ft, d) for d in range(1,deg+1)])
         else:
             raise ValueError(f"Expected fit_type to be of type int or tuple, got {type(self.fit_type)}")
         return kernel_elements
@@ -98,18 +103,20 @@ class Regression:
             raise ValueError('Use one of fit_types: "poly", "sin", "cos" or "fourier"')
         return kernel_out # type: ignore
         
-    def fit(self, x: _types.float_like | _types.time_like, y: _types.float_like):
+    def fit(self, x: _types.float_like | _types.time_like, y: _types.float_like) -> None:
         """
         Get model coefficients
         x: time
-        y: sla
+        y: feature(s)
         """
         rm_nan_idx = ~np.isnan(y)
-        time = x[rm_nan_idx].astype(np.int64).reshape(-1,1)/(365.25*24*3600e9) # ns -> yr
-        y = y[rm_nan_idx].reshape(-1,1)*100 # m -> cm
+
+        # Converted time from ns to yr
+        time = x[rm_nan_idx].astype(np.int64).reshape(-1,1)/(365.25*24*3600e9)
+        y = y[rm_nan_idx].reshape(-1, 1)
         kernel = self.create_kernel(time)
         if len(y) == 0:
-            coefs=np.full(kernel.shape[1], np.nan)
+            coefs = np.full(kernel.shape[1], np.nan)
         else:
             coefs = np.linalg.lstsq(kernel, y, rcond=None)[0]
         self.coefs = coefs.flatten()
@@ -128,12 +135,12 @@ class Regression:
     
     def save(self, file: BinaryIO) -> None:
         """ Saves model to a file"""
-        pickle.dump(self.__dict__, file)
+        pickle.dump(self.get_parameters(), file)
 
     @classmethod
     def load(cls, file: BinaryIO) -> Self:
         """ Loads the model from a file"""
-        return pickle.load(file)
+        return cls.set_parameters(pickle.load(file))
     
     @classmethod
     def set_parameters(cls, parameters: Dict[str, Any]) -> Self:
@@ -150,7 +157,7 @@ class Regression:
             "deg": self.deg,
             "period": self.period,
             "coefs": self.coefs,
-            "trained": self._trained
+            "_trained": self._trained
         }
 
 class MetaRegression:
@@ -168,6 +175,7 @@ class MetaRegression:
        self.internal_parameters: List[Dict[str, Any]] = []
        self.valid_regressor_map: Dict[int, int] = {}
        self._trained = False
+       self._y_shape: Tuple[int, ...] | None = None
 
     @property
     def IsTrained(self) -> bool:
@@ -177,12 +185,12 @@ class MetaRegression:
         """
         return self._trained
 
-    def dim_lookup(self, y: _types.float_like, i: int) -> _types.float_like:
+    def dim_lookup(self, i: int) -> Tuple[slice, int] | Tuple[int, slice]:
         """"""
         if self.dim == 0:
-            return y[i]
+            return (slice(None), i)
         elif self.dim == 1:
-            return y[:, i]
+            return (i, slice(None))
         else:
             raise ValueError("Invalid dimension.")
     
@@ -191,55 +199,69 @@ class MetaRegression:
         return 1 - self.dim # type: ignore
 
     def fit(self, x: _types.float_like | _types.time_like, y: _types.float_like):
-        """fit"""
+        """
+        Fitting x ~ Y where x is a vector that maps to each element in the matrix Y.
+        This means x ~ Y[0], x ~ Y[1], ...
+        """
         self.internal_parameters: List[Dict[str, Any]] = []
         valid_parameters = None
+        self._y_shape = y.shape
 
         model_id = 0
-        for i in range(y.shape[self.dim]):
-            d = self.dim_lookup(y, i)
-            mask = ~np.isnan(d)
+        for i in range(self._y_shape[self.invert_dim]):
             
-            if not mask.any():
+            # Get the correct dimension of y
+            d = y[self.dim_lookup(i)]
+
+            # Check d does not only contain nan
+            if np.isnan(d).all():
                 continue
             
+            # Setup regressor and fit model
             regressor = self.regressor(**self.kwargs) # type: ignore
-            regressor.fit(x[mask], y[mask])
-            parameters=regressor.get_parameters()
-            
-            if valid_parameters is None:
-                valid_parameters = set(self.kwargs) - set(parameters)
+            regressor.fit(x, d)
 
+            # Get model parameters
+            parameters = regressor.get_parameters()
             
+            # Get parameters what is not also saved in kwargs
+            if valid_parameters is None:
+                valid_parameters = set(self.kwargs) ^ set(parameters)
+
+            # Save parameters of regressor
             self.internal_parameters.append({valid_parameter: parameters[valid_parameter] for valid_parameter in valid_parameters})
 
+            # Map fitting id to regressor id
             self.valid_regressor_map[i] = model_id
             model_id += 1
-
         self._trained = True
 
     def predict(self, x: _types.float_like | _types.time_like) -> _types.float_like:
         """ Makes a prediction using x: time"""
-        
-        predictions = np.full(x.shape,np.nan)
-        for i in range(len(x)):
+        if not self._trained or self._y_shape is None:
+            raise Protocols.NotFittedError("Fit must be called before predict")
+
+        predictions = np.full(self._y_shape, np.nan)
+        for i in range(self._y_shape[self.invert_dim]):
+            # Get regressor mapping
             if (idx := self.valid_regressor_map.get(i)) is None:
                 continue
-            regressor = self.regressor(**self.kwargs) # type: ignore
-            regressor = regressor.set_parameters(self.internal_parameters[idx])
             
-            predictions[i] = regressor.predict(x)
-
+            # Construct regressor
+            regressor = self.regressor.set_parameters(self.kwargs | self.internal_parameters[idx])
+            
+            # Predict using the regressor
+            predictions[self.dim_lookup(i)] = regressor.predict(x)
         return predictions
 
     def save(self, file: BinaryIO) -> None:
         """ Saves model to a file"""
-        pickle.dump(self.__dict__, file)
+        pickle.dump(self.get_parameters(), file)
 
     @classmethod
     def load(cls, file: BinaryIO) -> Self:
         """ Loads the model from a file"""
-        return pickle.load(file)
+        return cls.set_parameters(pickle.load(file))
     
     @classmethod
     def set_parameters(cls, parameters: Dict[str, Any]) -> Self:
@@ -248,6 +270,7 @@ class MetaRegression:
         regressor.internal_parameters = parameters["internal_parameters"]
         regressor.valid_regressor_map = parameters["valid_regressor_map"]
         regressor._trained = parameters["_trained"]
+        regressor._y_shape = parameters["_y_shape"]
         return regressor
     
     def get_parameters(self) -> Dict[str, Any]:
@@ -258,5 +281,6 @@ class MetaRegression:
             "dim": self.dim,
             "internal_parameters": self.internal_parameters,
             "valid_regressor_map": self.valid_regressor_map,
-            "_trained": self._trained
+            "_trained": self._trained,
+            "_y_shape": self._y_shape
         }

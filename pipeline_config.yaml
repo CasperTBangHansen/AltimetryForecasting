@@ -24,7 +24,7 @@ pipeline:
   fit:
     parallel: True
     1:
-      - macro: RegressionYearly(class1, False, False)
+      - macro: RegressionYearly(class1, False, True)
     2:
       - macro: RegressionYearly(class2, False, False)
       - Regression("poly", 1, 1, class22, False, False)

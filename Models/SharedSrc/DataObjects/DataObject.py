@@ -25,25 +25,34 @@ class MainDataClass:
     
     @property
     def sla(self) -> _types.float_like:
-        return self._data['sla21'].data
+        """Sea level anomaly in meters"""
+        return self._data['sla21'].data * 100
     
     @property
     def sst(self) -> _types.float_like:
+        """Sea surface temperature in celsius"""
         return self._data['sst'].data
 
     @property
     def swh(self) -> _types.float_like:
+        """Significant wave height in meters"""
         return self._data['swh'].data
     
     @property
     def wind_speed(self) -> _types.float_like:
+        """Wind speed in meters per second"""
         return self._data['wind_speed'].data
     
     def get_features(self, features: Iterable[valid_features]) -> _types.float_like:
         new_features: List[str] = []
+        mults: List[float] = []
         for feature in features:
             new_features.append(self._data_vars[feature])
-        return np.stack([self._data[f].data for f in new_features])
+            if new_features[-1] == 'sla':
+                mults.append(100)
+            else:
+                mults.append(1)
+        return np.stack([self._data[f].data * mult for f, mult in zip(new_features, mults)])
 
 # Pipeline
 Pipeline = Callable[[MainDataClass, Path, Dict[str, Any]], Any]
