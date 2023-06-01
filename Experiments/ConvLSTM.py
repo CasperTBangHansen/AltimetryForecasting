@@ -16,18 +16,26 @@ class ConvLSTMCell(nn.Module):
         kernel_size: Tuple[int, int],
         padding: Tuple[int, int],
         activation: Activation,
-        frame_size: Tuple[int, int]
+        frame_size: Tuple[int, int],
+        bias: bool
     ):
         super(ConvLSTMCell, self).__init__()
 
+        self.in_channels = in_channels
+        self.out_channels = out_channels
+        self.kernel_size = kernel_size
+        self.padding = padding
         self.activation = activation
-
+        self.frame_size = frame_size
+        self.bias = bias
+        
         # Idea adapted from https://github.com/ndrplz/ConvLSTM_pytorch
         self.conv = nn.Conv2d(
             in_channels = in_channels + out_channels, 
             out_channels = 4 * out_channels, 
             kernel_size = kernel_size, 
-            padding = padding
+            padding = padding,
+            bias = bias
         )           
 
         # Initialize weights for Hadamard Products
@@ -36,7 +44,6 @@ class ConvLSTMCell(nn.Module):
         self.W_cf = nn.Parameter(torch.Tensor(out_channels, *frame_size))
 
     def forward(self, X: torch.Tensor, hidden_prev: torch.Tensor, cell_prev: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
-
         # Idea adapted from https://github.com/ndrplz/ConvLSTM_pytorch
         conv_output = self.conv(torch.cat([X, hidden_prev], dim=1))
 
@@ -48,7 +55,6 @@ class ConvLSTMCell(nn.Module):
 
         # Current Cell output
         cell_output = forget_gate * cell_prev + input_gate * self.activation(C_conv)
-
         output_gate = torch.sigmoid(o_conv + self.W_co * cell_output )
 
         # Current Hidden State
@@ -75,17 +81,16 @@ class ConvLSTM(nn.Module):
         self.device = device
 
         # We will unroll this over time steps
-        self.convLSTMcell = ConvLSTMCell(in_channels, out_channels,  kernel_size, padding, activation, frame_size)
+        self.convLSTMcell = ConvLSTMCell(in_channels, out_channels,  kernel_size, padding, activation, frame_size, True)
 
     def forward(self, X: torch.Tensor) -> torch.Tensor:
-        # X is a frame sequence (batch_size, num_channels, seq_len, height, width)
+        # X is a frame sequence (batch_size, seq_len, num_channels, height, width)
 
         # Get the dimensions
         batch_size, _, seq_len, height, width = X.size()
 
         # Initialize output
-        output = torch.zeros(batch_size, self.out_channels, seq_len, 
-        height, width, device = self.device)
+        output = torch.zeros(batch_size, self.out_channels, seq_len, height, width, device = self.device)
         
         # Initialize Hidden State
         hidden_state = torch.zeros(batch_size, self.out_channels, height, width, device = self.device)
@@ -129,11 +134,11 @@ class Seq2Seq(nn.Module):
         )
 
         self.sequential.add_module(
-            "batchnorm1", nn.BatchNorm3d(num_features=num_kernels)
+            "batchnorm1", nn.BatchNorm3d(num_features = num_kernels)
         ) 
 
         # Add rest of the layers
-        for l in range(2, num_layers+1):
+        for l in range(2, num_layers + 1):
 
             self.sequential.add_module(
                 f"convlstm{l}", ConvLSTM(
