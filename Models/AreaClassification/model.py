@@ -1,7 +1,12 @@
 import numpy as np
 from sklearn_som.som import SOM
 import pickle
-from typing import Self, BinaryIO
+from typing import BinaryIO
+import sys
+if sys.version_info >= (3,11):
+    from typing import Self
+else:
+    Self = None
 from .. import Protocols, _types
 
 

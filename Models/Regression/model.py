@@ -1,6 +1,11 @@
 import numpy as np
 import pickle
-from typing import List, Tuple, BinaryIO, Self, Dict, Any, Type, Literal
+from typing import List, Tuple, BinaryIO, Dict, Any, Type, Literal
+import sys
+if sys.version_info >= (3,11):
+    from typing import Self
+else:
+    Self = None
 from .. import _types, Protocols
 
 

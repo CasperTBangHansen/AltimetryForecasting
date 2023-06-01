@@ -1,7 +1,12 @@
 from . import BaseTransformer, NotFittedError
 from .. import _types
 import pickle
-from typing import BinaryIO, Self
+from typing import BinaryIO
+import sys
+if sys.version_info >= (3,11):
+    from typing import Self
+else:
+    Self = None
 from sklearn.base import TransformerMixin
 
 __all__ = ["SklearnTransformer"]

@@ -1,4 +1,9 @@
-from typing import Protocol, Self, BinaryIO, Dict, Any
+from typing import Protocol, BinaryIO, Dict, Any
+import sys
+if sys.version_info >= (3,11):
+    from typing import Self
+else:
+    Self = None
 from .. import _types
 
 __all__ = ["FitModelRegressor", "FitModelClassifier", "SaveModel", "BaseRegressor", "BaseClassifier", "NotFittedError"]
