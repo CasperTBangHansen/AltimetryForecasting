@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from typing import Tuple, Callable
+from typing import Tuple, Callable, Dict, Any
 
 __all__ = ["Activation", "ConvLSTMCell", "ConvLSTM", "Seq2Seq"]
 
@@ -118,6 +118,14 @@ class Seq2Seq(nn.Module):
     ):
         super(Seq2Seq, self).__init__()
 
+        self.num_channels = num_channels
+        self.num_kernels = num_kernels
+        self.kernel_size = kernel_size
+        self.padding = padding
+        self.activation = activation,
+        self.frame_size = frame_size
+        self.num_layers = num_layers
+        self.device = device
         self.sequential = nn.Sequential()
 
         # Add First layer (Different in_channels than the rest)
@@ -164,8 +172,20 @@ class Seq2Seq(nn.Module):
             padding=padding
         )
 
+    def get_kwargs(self) -> Dict[str, Any]:
+        """ Returns the input arguments given to this class"""
+        return {
+            'num_channels': self.num_channels,
+            'num_kernels': self.num_kernels,
+            'kernel_size': self.kernel_size,
+            'padding': self.padding,
+            'activation': self.activation,
+            'frame_size': self.frame_size,
+            'num_layers': self.num_layers,
+            'device': self.device
+        }       
+        
     def forward(self, X: torch.Tensor) -> torch.Tensor:
-
         # Forward propagation through all the layers
         output = self.sequential(X)
         # Return only the last output frame
