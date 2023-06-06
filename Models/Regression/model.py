@@ -246,7 +246,7 @@ class MetaRegression:
         if not self._trained or self._y_shape is None:
             raise Protocols.NotFittedError("Fit must be called before predict")
 
-        predictions = np.full(self._y_shape, np.nan)
+        predictions = np.full((len(x), self._y_shape[self.invert_dim]), np.nan)
         for i in range(self._y_shape[self.invert_dim]):
             # Get regressor mapping
             if (idx := self.valid_regressor_map.get(i)) is None:
