@@ -100,7 +100,8 @@ class ConvLSTM(nn.Module):
 
         # Unroll over time steps
         for time_step in range(seq_len):
-            output[:, :, time_step], cell_input = self.convLSTMcell(X[:, :, time_step], hidden_state, cell_input)
+            hidden_state, cell_input = self.convLSTMcell(X[:, :, time_step], hidden_state, cell_input)
+            output[:, :, time_step] = hidden_state
         return output
 
 class Seq2Seq(nn.Module):
@@ -117,7 +118,8 @@ class Seq2Seq(nn.Module):
         device: torch.device
     ):
         super(Seq2Seq, self).__init__()
-
+        if isinstance(activation, tuple):
+            activation = activation[0]
         self.num_channels = num_channels
         self.num_kernels = num_kernels
         self.kernel_size = kernel_size

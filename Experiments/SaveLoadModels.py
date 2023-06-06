@@ -55,13 +55,15 @@ def save_checkpoint(path: Path, model: SaveModel, optimizer: torch.optim.Optimiz
         path
     )
 
-def load_checkpoint(path: Path, model_type: Type[nn.Module]) -> Tuple[nn.Module, torch.optim.Optimizer, Loss, DatasetParameters]:
+def load_checkpoint(path: Path, model_type: Type[nn.Module], device: torch.device) -> Tuple[nn.Module, torch.optim.Optimizer, Loss, DatasetParameters]:
     """Loads the model, optimizer and loss from the path"""
-    checkpoint = torch.load(path)
+    checkpoint = torch.load(path, map_location=device)
     
     # Model
+    checkpoint['device'] = device
     model = model_type(**checkpoint['model_kwargs'])
     model.load_state_dict(checkpoint['model_state_dict'])
+    model.to(device)
     
     # Optimizer
     optimizer = checkpoint['optimizer_type'](model.parameters(), **checkpoint['optimizer_kwargs'])

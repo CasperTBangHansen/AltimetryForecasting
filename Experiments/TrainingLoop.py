@@ -15,15 +15,21 @@ loss_function = Callable[[torch.Tensor, torch.Tensor, torch.Tensor], torch.Tenso
 def predict(model: SaveModel, loader: DataLoader[SLADataset], frame_size: Tuple[int, int], device: torch.device) -> Tuple[_types.float_like, _types.float_like, _types.float_like]:
     """Makes a prediction for each batch in the loader an saves it in a tensor"""
     dataset: SLADataset = loader.dataset #type: ignore
-    result = np.zeros((len(dataset), *frame_size), dtype=np.float64)
+    result = np.full((len(dataset), *frame_size), np.nan, dtype=np.float64)
     targets = np.zeros((len(dataset), *frame_size), dtype=np.float64)
     target_times = np.zeros(len(dataset))
     model.eval()
     current_idx = 0
     with torch.no_grad():
         for features, target, mask, _, result_time in loader:
+            # Save time
+            batch_size = result_time.size(0)
+            target_times[current_idx:current_idx + batch_size] = result_time.numpy()
+            
             if mask.all():
+                current_idx += batch_size
                 continue
+            # Move to device
             features = features.to(device)
             target = target.to(device)
             mask = mask.to(device)
@@ -36,10 +42,9 @@ def predict(model: SaveModel, loader: DataLoader[SLADataset], frame_size: Tuple[
             target[mask] = np.nan
 
             # Save predictions and targets
-            batch_size = output.size(0)
             result[current_idx:current_idx + batch_size] = output.cpu().detach().numpy()
             targets[current_idx:current_idx + batch_size] = target.cpu().detach().numpy()
-            target_times[current_idx:current_idx + batch_size] = result_time.numpy()
+            
             current_idx += batch_size
     return result, targets, target_times
 
@@ -111,6 +116,7 @@ def train_validation_loop(
     criterion: loss_function,
     optimizer: torch.optim.Optimizer,
     num_epochs: int,
+    start_epoch: int,
     device: torch.device,
     update_function: Callable[[Loss], None] | None = None,
     path: Path | None = None,
@@ -121,7 +127,7 @@ def train_validation_loop(
     if path is not None:
         path.mkdir(parents=True, exist_ok=True)
     losses = []
-    for epoch in range(1, num_epochs + 1):
+    for epoch in range(start_epoch + 1, num_epochs + 1):
         # Train model
         train_loss = train(model, train_loader, criterion, optimizer, device)
         
