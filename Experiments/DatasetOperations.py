@@ -1,8 +1,8 @@
 import numpy as np
 import torch
-from typing import Tuple
+from typing import Tuple, Optional
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, datetime
 from torch.utils.data import Dataset
 
 try:
@@ -20,6 +20,7 @@ class DatasetParameters:
     fill_nan: float
     train_end: date
     validation_end: date
+    n_predictions: Optional[int] = 1
 
 @dataclass
 class Loss:
@@ -27,6 +28,8 @@ class Loss:
     epoch: int
     training: float
     validation: float
+    time: Optional[datetime] = None
+    learning_rate: Optional[float] = 0
 
 class SLADataset(Dataset):
     """Constructs the SLA dataset"""
@@ -40,12 +43,13 @@ class SLADataset(Dataset):
         self.sequence_length = datasetparameters.sequence_length
         self.sequence_steps = datasetparameters.sequence_steps
         self.prediction_steps = datasetparameters.prediction_steps
+        self.n_predictions = datasetparameters.n_predictions
         self.fill_nan = datasetparameters.fill_nan
         self._len = len(self.x)
         self._sequence_size = (self.sequence_steps - 1) * (self.sequence_length - 1) + self.sequence_length
 
     def __len__(self) -> int:
-        return self._len - self._sequence_size - self.prediction_steps
+        return self._len - self._sequence_size - self.prediction_steps * self.n_predictions
 
     def __getitem__(self, idx: int) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
         # Features
@@ -53,10 +57,10 @@ class SLADataset(Dataset):
         features_time = self.t[idx:idx + self.sequence_steps*(self.sequence_length):self.sequence_steps]
         
         # Target
-        end_idx = idx + self._sequence_size + self.prediction_steps - 1
-        target = self.x[end_idx]
-        mask = self.mask[end_idx]
-        pred_time = self.t[end_idx]
+        end_idxs = [idx + self._sequence_size + self.prediction_steps * i - 1 for i in range(1, self.n_predictions + 1)]
+        target = self.x[end_idxs]
+        mask = self.mask[end_idxs]
+        pred_time = self.t[end_idxs]
         return features.unsqueeze(0), target, mask, features_time, pred_time
 
 def stack_frames(dataset: _types.float_like, n_frames: int) -> _types.float_like:
