@@ -28,7 +28,7 @@ def predict(model: SaveModel, loader: DataLoader[SLADataset], frame_size: Tuple[
             batch_size = result_time.size(0)
             target_times[current_idx:current_idx + batch_size] = result_time.numpy()
             
-            if mask.all():
+            if torch.any(torch.all(torch.all(mask, dim=3), dim=2)):
                 current_idx += batch_size
                 continue
             # Move to device
@@ -65,7 +65,7 @@ def predict_seq(model: SaveModel, loader: DataLoader[SLADataset], frame_size: Tu
             batch_size = result_time.size(0)
             target_times[current_idx:current_idx + batch_size] = result_time[:, n_sequence - 1].numpy()
             
-            if mask.all():
+            if torch.any(torch.all(torch.all(mask, dim=3), dim=2)):
                 current_idx += batch_size
                 continue
             # Move to device
@@ -93,7 +93,7 @@ def validate(model: SaveModel, loader: DataLoader[SLADataset], criterion: loss_f
     model.eval()
     with torch.no_grad():
         for features, target, mask, _, _ in loader:
-            if mask.all():
+            if torch.any(torch.all(torch.all(mask, dim=3), dim=2)):
                 continue
             # Convert to correct device
             features = features.to(device)
@@ -123,7 +123,7 @@ def train(
     model.train()
     for i, (features, target, mask, _, _) in enumerate(loader):
         # Check if day is nan
-        if mask.all():
+        if torch.any(torch.all(torch.all(mask, dim=3), dim=2)):
             continue
         
         # Convert to correct device
@@ -151,7 +151,7 @@ def train(
         # Save loss
         train_loss += loss.item()
         if np.isnan(train_loss):
-            raise ValueError(f"Found nan values at {i}. Please use other hyperparameters or try again. Loss was {loss}. use_teacher_forcing = {use_teacher_forcing}. Output was nan? {np.isnan(output.detach().cpu().numpy()).all()}. Input was nan? {np.isnan(features.detach().cpu().numpy()).all()}. Targets was nan? {np.isnan(target.detach().cpu().numpy()).all()}")
+            raise ValueError(f"Found nan values at {i}. Please use other hyperparameters or try again. Loss was {loss}. use_teacher_forcing = {use_teacher_forcing}. Output was nan? {np.isnan(output.detach().cpu().numpy()).any()}. Input was nan? {np.isnan(features.detach().cpu().numpy()).all()}. Targets was nan? {np.isnan(target.detach().cpu().numpy()).any()}")
 
     # Compute average loss
     return train_loss / len(loader)
