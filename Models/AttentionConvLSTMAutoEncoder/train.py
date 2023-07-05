@@ -13,9 +13,15 @@ from AltimeterAutoencoder.src.regressor import MetaRegression
 from AltimeterAutoencoder.src import _types
 from AltimeterAutoencoder.src.regressor import fit_regressor, MetaRegression
 from . import SaveLoadModels
+from .training_loop import train_validation_loop
 from ..Shared import Loss, DatasetParameters
 from ..Shared.Dataloader import SLADataset
 from ..AttentionConvLSTM import Seq2SeqAttention, InputModel, OutputModel, Attention, Encoder, Decoder
+from ..AttentionConvLSTM.Loss import create_masked_loss_function_diff
+
+def print_to_file_on_epoch(loss: Loss, _: _types.float_like, __: _types.float_like, n_epochs: int):
+    logger = logging.getLogger()
+    logger.info(f"Epoch: {n_epochs}/{loss.epoch} Training Loss: {loss.training_loss:.5f} Validation Loss: {loss.validation_loss:.5f}")
 
 def setup_model(
     in_channels: int,
@@ -143,9 +149,17 @@ def train_model():
     kernel_size = (3, 3)
     padding = ((kernel_size[0] - 1)//2, (kernel_size[1] - 1)//2)
     frame_size = (128, 360)
-    in_channels = 1
     encoder_in_channels = 16
     encoder_out_channels = 32
+
+    # Training loop
+    learning_rate = 1e-6 #1e-5
+    weight_decay = 0.0001
+    epochs = 100
+    save_every = 10
+    n_sequences = 30
+    scheduler = None
+    teacher_forcing_ratio_list: List[float] = [0]*epochs
 
     # Loss
     criterion = create_masked_loss_function_diff(nn.MSELoss)
@@ -175,26 +189,48 @@ def train_model():
             validation_end = validation_end,
             n_predictions = default_n_predictions,
         )
+        start_epoch = 0
 
         model = setup_model(
-            in_channels = encoder,
+            in_channels = encoder.feature_dimension,
             encoder_in_channels = encoder_in_channels,
             encoder_out_channels = encoder_out_channels,
             kernel_size = kernel_size,
             padding = padding,
-            frame_size = frame_size,
-            hidden_output_network_channels = hidden_output_network_channels
+            frame_size = encoder.get_out_frame_size(frame_size),
+            hidden_output_network_channels = []
         )
-
-        start_epoch = 0
+        optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate, weight_decay=weight_decay)
     
     train_loader, validation_loader = setup_data(
         DATAPATH,
         SAVEFOLDER / "Regression.pkl",
         dataset_parameters # type: ignore
     )
-    
 
+        # Train
+    scheduler = None
+    losses = train_validation_loop(
+        encoder = encoder,
+        decoder = decoder,
+        model = model, # type: ignore
+        train_loader = train_loader,
+        val_loader = validation_loader,
+        criterion = criterion,
+        optimizer = optimizer, # type: ignore
+        num_epochs = epochs,
+        start_epoch = start_epoch, # type: ignore
+        device = DEVICE,
+        update_function = print_to_file_on_epoch,
+        path = SAVEFOLDER,
+        save_n_epochs = save_every,
+        dataset_parameters = dataset_parameters, # type: ignore
+        teacher_forcing_ratios = teacher_forcing_ratio_list,
+        losses = None,
+        scheduler = scheduler,
+        n_sequences = n_sequences,
+        encoder_filename = auto_encoder_name
+    )
 
 if __name__ == '__main__':
     train_model()

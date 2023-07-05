@@ -1,10 +1,11 @@
 import torch
 import torch.nn as nn
 from typing import Dict, Any, Sequence
-from EncoderDecoder import Encoder, Decoder
+from ..AttentionConvLSTM.EncoderDecoder import Encoder, Decoder
+from AltimeterAutoencoder.src import autoencoder
 import random
 
-__all__ = ["Seq2SeqAttentionZero", "Seq2SeqAttention", "InputModel", "OutputModel"]
+__all__ = ["Seq2SeqAttention", "InputModel", "OutputModel"]
 
 class InputModel(nn.Module):
     def __init__(self, in_channels: int, output_channels: int):
@@ -81,64 +82,15 @@ class Seq2SeqAttention(nn.Module):
             'output_network': self.output_network.get_kwargs()
         }
 
-    def forward(self, X: torch.Tensor, y: torch.Tensor, pred_seq_len: int, teacher_force_ratio: float = 0.5) -> torch.Tensor:
-        """
-        Input:
-            X = [batch_size, in_channels, seq_len, height, width]
-            y = [batch_size, seq_len, height, width]
-            pred_seq_len = number of output sequences
-            teacher_force_ratio = percent chance to use teacher forcing [0, 1]
-
-        Output:
-            output = [batch_size, seq_len, height, width]
-        """
-        
-        # Run through input network and the encoder
-        x_encoder_in = self.input_network(X)        
-        encoder_output, hidden, cell = self.encoder(x_encoder_in)
-        
-        # Get the dimensions
-        batch_size, channels, height, width = hidden.size()
-        outputs = torch.zeros(batch_size, 1, pred_seq_len, height, width, device = hidden.device)
-        
-        # First input
-        input_decoder = x_encoder_in[:, :, -1]
-        
-        # Run through the decoder
-        for t in range(pred_seq_len):
-            output, hidden, cell = self.decoder(input_decoder, encoder_output, hidden, cell)
-            output = self.output_network(output)
-            outputs[:, :, t] = output
-            
-            if random.random() < teacher_force_ratio:
-                input_decoder = self.input_network(y[:, t].unsqueeze(1))
-            else:
-                input_decoder = self.input_network(output)
-        return outputs.squeeze(1)
-    
-class Seq2SeqAttentionZero(nn.Module):
-    def __init__(
+    def forward(
         self,
-        input_network: InputModel,
-        encoder: Encoder,
-        decoder: Decoder,
-        output_network: OutputModel
-    ):
-        super().__init__()
-        self.input_network = input_network
-        self.encoder = encoder
-        self.decoder = decoder
-        self.output_network = output_network
-    
-    def get_kwargs(self) -> Dict[str, Any]:
-        return {
-            'input_network': self.input_network.get_kwargs(),
-            'encoder': self.encoder.get_kwargs(),
-            'decoder': self.decoder.get_kwargs(),
-            'output_network': self.output_network.get_kwargs()
-        }
-
-    def forward(self, X: torch.Tensor, y: torch.Tensor, pred_seq_len: int, teacher_force_ratio: float = 0.5) -> torch.Tensor:
+        featurespace_encoder: autoencoder.Encoder,
+        featurespace_decoder: autoencoder.Decoder,
+        X: torch.Tensor,
+        y: torch.Tensor,
+        pred_seq_len: int,
+        teacher_force_ratio: float = 0.5
+    ) -> torch.Tensor:
         """
         Input:
             X = [batch_size, in_channels, seq_len, height, width]
@@ -149,26 +101,34 @@ class Seq2SeqAttentionZero(nn.Module):
         Output:
             output = [batch_size, seq_len, height, width]
         """
+        # Set autoencoder to not require gradients
+        featurespace_encoder.eval()
+        featurespace_decoder.eval()
+        featurespace_encoder.requires_grad_(False)
+        featurespace_decoder.requires_grad_(False)
+        
+        # Convert input to featurespace
+        feature_space = featurespace_encoder(X)
         
         # Run through input network and the encoder
-        x_encoder_in = self.input_network(X)        
+        x_encoder_in = self.input_network(feature_space)        
         encoder_output, hidden, cell = self.encoder(x_encoder_in)
         
         # Get the dimensions
-        batch_size, channels, height, width = hidden.size()
-        outputs = torch.zeros(batch_size, 1, pred_seq_len, height, width, device = hidden.device)
+        batch_size, channels, seq_len, height, width = X.size()
+        outputs = torch.zeros(batch_size, channels, pred_seq_len, height, width, device = hidden.device)
         
         # First input
-        input_decoder = torch.zeros(batch_size, self.decoder.in_channels, height, width, device = hidden.device)
+        input_decoder = feature_space[:, :, -1]
         
         # Run through the decoder
         for t in range(pred_seq_len):
             output, hidden, cell = self.decoder(input_decoder, encoder_output, hidden, cell)
-            output = self.output_network(output)
+            output = featurespace_decoder(self.output_network(output))
             outputs[:, :, t] = output
             
             if random.random() < teacher_force_ratio:
-                input_decoder = self.input_network(y[:, t].unsqueeze(1))
+                input_decoder = featurespace_encoder(self.input_network(y[:, t].unsqueeze(1)))
             else:
-                input_decoder = self.input_network(output)
+                input_decoder = featurespace_encoder(self.input_network(output))
         return outputs.squeeze(1)
