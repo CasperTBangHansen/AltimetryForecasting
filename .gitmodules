@@ -1,0 +1,3 @@
+[submodule "AltimeterAutoencoder"]
+	path = AltimeterAutoencoder
+	url = https://github.com/s176531/AltimeterAutoencoder
