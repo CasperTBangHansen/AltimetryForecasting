@@ -104,11 +104,13 @@ class Seq2SeqAttention(nn.Module):
         # Set autoencoder to not require gradients
         featurespace_encoder.eval()
         featurespace_decoder.eval()
-        featurespace_encoder.requires_grad_(False)
-        featurespace_decoder.requires_grad_(False)
+        for param in featurespace_encoder.parameters():
+            param.requires_grad = False
+        for param in featurespace_decoder.parameters():
+            param.requires_grad = False
         
         # Convert input to featurespace
-        feature_space = featurespace_encoder(X)
+        feature_space = featurespace_encoder(X.transpose(1, 2)).transpose(1, 2)
         
         # Run through input network and the encoder
         x_encoder_in = self.input_network(feature_space)        
@@ -119,16 +121,85 @@ class Seq2SeqAttention(nn.Module):
         outputs = torch.zeros(batch_size, channels, pred_seq_len, height, width, device = hidden.device)
         
         # First input
-        input_decoder = feature_space[:, :, -1]
+        input_decoder = x_encoder_in[:, :, -1]
         
         # Run through the decoder
         for t in range(pred_seq_len):
             output, hidden, cell = self.decoder(input_decoder, encoder_output, hidden, cell)
-            output = featurespace_decoder(self.output_network(output))
-            outputs[:, :, t] = output
-            
+            decoded_featurespace = self.output_network(output)
+            output = featurespace_decoder(decoded_featurespace.unsqueeze(1))
+            outputs[:, :, t] = output.squeeze(1)
+
             if random.random() < teacher_force_ratio:
-                input_decoder = featurespace_encoder(self.input_network(y[:, t].unsqueeze(1)))
+                feature_space = featurespace_encoder(
+                    y[:, t].unsqueeze(1).unsqueeze(1).transpose(1, 2)
+                ).transpose(1, 2)
             else:
-                input_decoder = featurespace_encoder(self.input_network(output))
+                feature_space = featurespace_encoder(output.transpose(1, 2)).transpose(1, 2)
+
+            input_decoder = self.input_network(feature_space).squeeze(2)
         return outputs.squeeze(1)
+    
+    def get_latent_space(
+        self,
+        featurespace_encoder: autoencoder.Encoder,
+        featurespace_decoder: autoencoder.Decoder,
+        X: torch.Tensor,
+        y: torch.Tensor,
+        pred_seq_len: int,
+        teacher_force_ratio: float = 0.5
+    ) -> torch.Tensor:
+        """
+        Input:
+            X = [batch_size, in_channels, seq_len, height, width]
+            y = [batch_size, seq_len, height, width]
+            pred_seq_len = number of output sequences
+            teacher_force_ratio = percent chance to use teacher forcing [0, 1]
+
+        Output:
+            latent_space = [batch_size, latent_space, seq_len, height, width]
+            output = [batch_size, seq_len, height, width]
+        """
+        # Set autoencoder to not require gradients
+        featurespace_encoder.eval()
+        featurespace_decoder.eval()
+        for param in featurespace_encoder.parameters():
+            param.requires_grad = False
+        for param in featurespace_decoder.parameters():
+            param.requires_grad = False
+        
+        # Convert input to featurespace
+        feature_space = featurespace_encoder(X.transpose(1, 2)).transpose(1, 2)
+        feature_space_ = feature_space
+        # Run through input network and the encoder
+        x_encoder_in = self.input_network(feature_space)        
+        encoder_output, hidden, cell = self.encoder(x_encoder_in)
+        
+        # Get the dimensions
+        batch_size, channels, seq_len, height, width = X.size()
+        outputs = torch.zeros(batch_size, channels, pred_seq_len, height, width, device = hidden.device)
+        latent_space = torch.zeros(batch_size, featurespace_encoder.feature_dimension, pred_seq_len, *self.encoder.frame_size, device = hidden.device)
+    
+        # First input
+        input_decoder = x_encoder_in[:, :, -1]
+        
+        # Run through the decoder
+        for t in range(pred_seq_len):
+            output, hidden, cell = self.decoder(input_decoder, encoder_output, hidden, cell)
+            decoded_featurespace = self.output_network(output)
+            
+            # decoded_featurespace = feature_space_[:, :, t]
+            latent_space[:, :, t] = decoded_featurespace
+            output = featurespace_decoder(decoded_featurespace.unsqueeze(1))
+            outputs[:, :, t] = output.squeeze(1)
+
+            if random.random() < teacher_force_ratio:
+                feature_space = featurespace_encoder(
+                    y[:, t].unsqueeze(1).unsqueeze(1).transpose(1, 2)
+                ).transpose(1, 2)
+            else:
+                feature_space = featurespace_encoder(output.transpose(1, 2)).transpose(1, 2)
+
+            input_decoder = self.input_network(feature_space).squeeze(2)
+        return latent_space, outputs.squeeze(1)
+        

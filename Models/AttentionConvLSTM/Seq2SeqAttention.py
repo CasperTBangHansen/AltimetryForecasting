@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 from typing import Dict, Any, Sequence
-from EncoderDecoder import Encoder, Decoder
+from .EncoderDecoder import Encoder, Decoder
 import random
 
 __all__ = ["Seq2SeqAttentionZero", "Seq2SeqAttention", "InputModel", "OutputModel"]

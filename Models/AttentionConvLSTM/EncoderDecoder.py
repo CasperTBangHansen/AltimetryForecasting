@@ -1,8 +1,8 @@
 import torch
 import torch.nn as nn
 from typing import Tuple, Dict, Any
-from ConvLSTM import ConvLSTMCell, Activation, ConvLSTMLayer
-from Attention import Attention
+from .ConvLSTM import ConvLSTMCell, Activation, ConvLSTMLayer
+from .Attention import Attention
 __all__ = ["Encoder", "Decoder"]
 
 class Encoder(nn.Module):
@@ -106,7 +106,6 @@ class Decoder(nn.Module):
         weights = self.attention(hidden_state, encoder_outputs)
         context_vector = torch.einsum("b t h w, b c t h w -> b c h w", weights, encoder_outputs)
         lstm_input = torch.cat((context_vector, X), dim=1)
-        
         output, hidden_state, cell_input = self.convLSTMcell(lstm_input, hidden_state, cell_input)
         
         skip_connecting_and_weigths = torch.cat((output, context_vector, X), dim = 1)
