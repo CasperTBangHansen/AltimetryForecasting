@@ -71,8 +71,8 @@ def validate(
 ) -> Tuple[float, _types.float_like, _types.float_like]:
     """Computes the criterion for the model and loader in evaluation mode"""
     val_loss: float = 0
-    example_img_true = np.array(0, dtype=np.float32)
-    example_img_pred = np.array(0, dtype=np.float32)
+    example_img_true = np.array([0], dtype=np.float32)
+    example_img_pred = np.array([0], dtype=np.float32)
     model.eval()
     with torch.no_grad():
         for features, target, mask, _, _ in loader:            
@@ -95,7 +95,7 @@ def validate(
             current_loss = current_loss.item()
             val_loss += current_loss
             
-            if example_img_true is None:
+            if len(example_img_true) == 0:
                 example_img_pred = output[0].cpu().numpy()
                 example_img_true = target[0].cpu().numpy()
                 m = mask[0, :n_sequences].cpu().numpy()
