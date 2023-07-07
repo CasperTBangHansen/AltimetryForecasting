@@ -94,14 +94,12 @@ def validate(
                 current_loss = criterion(output[:, :n_sequences], target[:, :n_sequences], mask[:, :n_sequences])
             current_loss = current_loss.item()
             val_loss += current_loss
-            
-            if len(example_img_true) == 0:
+            if example_img_true.size == 1:
                 example_img_pred = output[0].cpu().numpy()
                 example_img_true = target[0].cpu().numpy()
                 m = mask[0, :n_sequences].cpu().numpy()
                 example_img_pred[m] = np.nan
                 example_img_true[m] = np.nan
-
     # Compute average loss
     return val_loss / len(loader), example_img_true, example_img_pred
 
