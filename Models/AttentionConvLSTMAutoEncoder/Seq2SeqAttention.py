@@ -145,9 +145,7 @@ class Seq2SeqAttention(nn.Module):
         featurespace_encoder: autoencoder.Encoder,
         featurespace_decoder: autoencoder.Decoder,
         X: torch.Tensor,
-        y: torch.Tensor,
         pred_seq_len: int,
-        teacher_force_ratio: float = 0.5
     ) -> torch.Tensor:
         """
         Input:
@@ -170,7 +168,7 @@ class Seq2SeqAttention(nn.Module):
         
         # Convert input to featurespace
         feature_space = featurespace_encoder(X.transpose(1, 2)).transpose(1, 2)
-        feature_space_ = feature_space
+
         # Run through input network and the encoder
         x_encoder_in = self.input_network(feature_space)        
         encoder_output, hidden, cell = self.encoder(x_encoder_in)
@@ -192,13 +190,7 @@ class Seq2SeqAttention(nn.Module):
             latent_space[:, :, t] = decoded_featurespace
             output = featurespace_decoder(decoded_featurespace.unsqueeze(1))
             outputs[:, :, t] = output.squeeze(1)
-
-            if random.random() < teacher_force_ratio:
-                feature_space = featurespace_encoder(
-                    y[:, t].unsqueeze(1).unsqueeze(1).transpose(1, 2)
-                ).transpose(1, 2)
-            else:
-                feature_space = featurespace_encoder(output.transpose(1, 2)).transpose(1, 2)
+            feature_space = featurespace_encoder(output.transpose(1, 2)).transpose(1, 2)
 
             input_decoder = self.input_network(feature_space).squeeze(2)
         return latent_space, outputs.squeeze(1)

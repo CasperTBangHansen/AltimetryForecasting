@@ -67,7 +67,6 @@ def validate(
     else:
         mse_losses = np.zeros(loader.dataset.prediction_steps)
         grad_losses = np.zeros(loader.dataset.prediction_steps - 1)
-        
     
     model.eval()
     with torch.no_grad():
@@ -101,7 +100,7 @@ def validate(
                 example_img_true[m] = np.nan
 
     # Compute average loss
-    return val_loss / len(loader), example_img_true, example_img_pred, mse_losses, grad_losses
+    return val_loss / len(loader), example_img_true, example_img_pred, mse_losses / len(loader), grad_losses / len(loader)
 
 def train(
     model: SaveModel,
@@ -152,7 +151,7 @@ def train(
             raise ValueError(f"Found nan values at {i}. Please use other hyperparameters or try again. Loss was {loss}. Output was nan? {np.isnan(output.detach().cpu().numpy()).any()}. Input was nan? {np.isnan(features.detach().cpu().numpy()).all()}. Targets was nan? {np.isnan(target.detach().cpu().numpy()).any()}")
 
     # Compute average loss
-    return train_loss / len(loader), mse_losses, grad_losses
+    return train_loss / len(loader), mse_losses / len(loader), grad_losses / len(loader)
 
 def train_validation_loop(
     model: SaveModel,

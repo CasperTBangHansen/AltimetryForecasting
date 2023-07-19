@@ -73,6 +73,13 @@ def validate(
     val_loss: float = 0
     example_img_true = np.array([0], dtype=np.float32)
     example_img_pred = np.array([0], dtype=np.float32)
+    if n_sequences is not None:
+        mse_losses = np.zeros(n_sequences)
+        grad_losses = np.zeros(n_sequences - 1)
+    else:
+        mse_losses = np.zeros(loader.dataset.prediction_steps)
+        grad_losses = np.zeros(loader.dataset.prediction_steps - 1)
+    
     model.eval()
     with torch.no_grad():
         for features, target, mask, _, _ in loader:            
@@ -89,9 +96,11 @@ def validate(
             
             # Compute and add loss
             if n_sequences is None:
-                current_loss = criterion(output, target, mask)
+                current_loss, _mse_losses, _grad_losses = criterion(output, target, mask)
             else:
-                current_loss = criterion(output[:, :n_sequences], target[:, :n_sequences], mask[:, :n_sequences])
+                current_loss, _mse_losses, _grad_losses = criterion(output[:, :n_sequences], target[:, :n_sequences], mask[:, :n_sequences])
+            mse_losses += _mse_losses
+            grad_losses += _grad_losses
             current_loss = current_loss.item()
             val_loss += current_loss
             if example_img_true.size == 1:
@@ -101,7 +110,7 @@ def validate(
                 example_img_pred[m] = np.nan
                 example_img_true[m] = np.nan
     # Compute average loss
-    return val_loss / len(loader), example_img_true, example_img_pred
+    return val_loss / len(loader), example_img_true, example_img_pred, mse_losses / len(loader), grad_losses / len(loader)
 
 def train(
     encoder: Encoder,
@@ -117,6 +126,12 @@ def train(
     """Traines the model based on the criterion and loader"""
     
     train_loss = 0
+    if n_sequence is not None:
+        mse_losses = np.zeros(n_sequence)
+        grad_losses = np.zeros(n_sequence - 1)
+    else:
+        mse_losses = np.zeros(loader.dataset.prediction_steps)
+        grad_losses = np.zeros(loader.dataset.prediction_steps - 1)
     model.train()
     for i, (features, target, mask, _, _) in enumerate(loader):       
         # Check if day is nan
@@ -132,7 +147,9 @@ def train(
         output = model(encoder, decoder, features, target, n_sequence, teacher_forcing_ratio)
         
         # Compute loss and apply backpropagation
-        loss = criterion(output[:, :n_sequence], target[:, :n_sequence], mask[:, :n_sequence])
+        loss, _mse_losses, _grad_losses = criterion(output[:, :n_sequence], target[:, :n_sequence], mask[:, :n_sequence])
+        mse_losses += _mse_losses
+        grad_losses += _grad_losses
         loss.backward()
         
         # Optimize
@@ -146,7 +163,7 @@ def train(
             raise ValueError(f"Found nan values at {i}. Please use other hyperparameters or try again. Loss was {loss}. Output was nan? {np.isnan(output.detach().cpu().numpy()).any()}. Input was nan? {np.isnan(features.detach().cpu().numpy()).all()}. Targets was nan? {np.isnan(target.detach().cpu().numpy()).any()}")
 
     # Compute average loss
-    return train_loss / len(loader)
+    return train_loss / len(loader), mse_losses / len(loader), grad_losses / len(loader)
 
 def train_validation_loop(
     encoder: Encoder,
@@ -183,10 +200,10 @@ def train_validation_loop(
             if isinstance(teacher_forcing_ratios, Sequence):
                 teacher_forcing_ratio = teacher_forcing_ratios[epoch]
             # Train model
-            train_loss = train(encoder, decoder, model, train_loader, criterion, optimizer, device, n_sequences, teacher_forcing_ratio)
+            train_loss, train_mse_losses, train_grad_losses = train(encoder, decoder, model, train_loader, criterion, optimizer, device, n_sequences, teacher_forcing_ratio)
 
             # Compute validation loss
-            val_loss, example_img_true, example_img_pred = validate(encoder, decoder, model, val_loader, criterion, device, n_sequences)
+            val_loss, example_img_true, example_img_pred, val_mse_losses, val_grad_losses = validate(encoder, decoder, model, val_loader, criterion, device, n_sequences)
 
             # Save losses
             learning_rate = optimizer.param_groups[0]['lr']    
@@ -201,7 +218,7 @@ def train_validation_loop(
             
             # Print
             if update_function is not None:
-                update_function(losses[-1], example_img_true, example_img_pred, num_epochs)
+                update_function(losses[-1], example_img_true, example_img_pred, train_mse_losses, train_grad_losses, val_mse_losses, val_grad_losses, num_epochs)
 
             # Save checkpoint of model
             if save_n_epochs is not None and path is not None and dataset_parameters is not None:

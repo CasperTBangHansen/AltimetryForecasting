@@ -51,7 +51,7 @@ def create_masked_loss_function_diff(loss_module: Type[nn.modules.loss._Loss]) -
             output_grad = output[:, day_idx - 1] - output[:, day_idx]
             target_grad = target[:, day_idx - 1] - target[:, day_idx]
             loss = _loss_function(output_grad[mask], target_grad[mask]) * np.log(day_idx + 1)
-            grad_losses[day_idx - 1] = grad_loss.detach().item()
+            grad_losses[day_idx - 1] = loss.detach().item()
             grad_loss += loss
         
         # Batch norm

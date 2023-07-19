@@ -7,9 +7,24 @@ from AltimeterAutoencoder.src import _types
 
 class SLADataset(Dataset):
     """Constructs the SLA dataset"""
-    def __init__(self, x: _types.float_like, t: _types.int_like, datasetparameters: DatasetParameters):
+    def __init__(
+        self,
+        x: _types.float_like,
+        t: _types.int_like,
+        datasetparameters: DatasetParameters,
+        min_value = None,
+        difference = None
+    ):
         # Convert to float32 (float64 is overkill)
         x_32 = x.astype(np.float32)
+        self.min_value = min_value
+        self.difference = difference
+        if min_value is not None and difference is not None:
+            # Feature scale between -1 and 1
+            min_feature_scale = -1
+            max_feature_scale = 1
+            difference_feature_scale = (max_feature_scale - min_feature_scale)
+            x_32 = min_feature_scale + difference_feature_scale*(x_32 - self.min_value) / self.difference
         
         self.mask = torch.tensor(np.isnan(x_32), dtype=torch.bool)
         self.x = torch.nan_to_num(torch.tensor(x_32, dtype=torch.float32), nan = datasetparameters.fill_nan)

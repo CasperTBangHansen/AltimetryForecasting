@@ -115,6 +115,44 @@ class Seq2SeqAttention(nn.Module):
             else:
                 input_decoder = self.input_network(output)
         return outputs.squeeze(1)
+
+    def get_attention(
+        self,
+        X: torch.Tensor,
+        pred_seq_len: int,
+    ) -> torch.Tensor:
+        """
+        Input:
+            X = [batch_size, in_channels, seq_len, height, width]
+            y = [batch_size, seq_len, height, width]
+            pred_seq_len = number of output sequences
+            teacher_force_ratio = percent chance to use teacher forcing [0, 1]
+
+        Output:
+            latent_space = [batch_size, latent_space, seq_len, height, width]
+            output = [batch_size, seq_len, height, width]
+        """        
+        # Run through input network and the encoder
+        x_encoder_in = self.input_network(X)        
+        encoder_output, hidden, cell = self.encoder(x_encoder_in)
+        
+        # Get the dimensions
+        batch_size, channels, height, width = hidden.size()
+        outputs = torch.zeros(batch_size, 1, pred_seq_len, height, width, device = hidden.device)
+        
+        # First input
+        input_decoder = x_encoder_in[:, :, -1]
+        
+        attention_weights = []
+        # Run through the decoder
+        for t in range(pred_seq_len):
+            output, hidden, cell, attention_weight = self.decoder.get_attention(input_decoder, encoder_output, hidden, cell)
+            attention_weights.append(attention_weight)
+            output = self.output_network(output)
+            outputs[:, :, t] = output
+            
+            input_decoder = self.input_network(output)
+        return outputs.squeeze(1), torch.stack(attention_weights, axis=1)
     
 class Seq2SeqAttentionZero(nn.Module):
     def __init__(

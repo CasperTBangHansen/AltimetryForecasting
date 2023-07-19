@@ -112,6 +112,37 @@ class Decoder(nn.Module):
 
         return skip_connecting_and_weigths, hidden_state, cell_input
 
+    def get_attention(
+        self,
+        X: torch.Tensor,
+        encoder_outputs: torch.Tensor,
+        hidden_state: torch.Tensor,
+        cell_input: torch.Tensor
+    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        """
+        Input:
+            X = [batch_size, in_channels, height, width]
+            encoder_outputs = [batch_size, in_channels * 2, seq_len, height, width]
+            hidden_state = [batch_size, in_channels, height, width]
+            cell_input = [batch_size, in_channels, height, width]
+
+        Output:
+            skip_connecting_and_weigths = [batch_size, out_channels + in_channels + 2 * hidden_channels, height, width]
+            hidden_state = [batch_size, in_channels, height, width]
+            cell_input = [batch_size, in_channels, height, width]
+            weights = [batch_size, out_channels * 2, seq_len, height, width]
+        """
+
+        weights = self.attention(hidden_state, encoder_outputs)
+        context_vector = torch.einsum("b t h w, b c t h w -> b c h w", weights, encoder_outputs)
+        lstm_input = torch.cat((context_vector, X), dim=1)
+        output, hidden_state, cell_input = self.convLSTMcell(lstm_input, hidden_state, cell_input)
+        
+        skip_connecting_and_weigths = torch.cat((output, context_vector, X), dim = 1)
+
+        return skip_connecting_and_weigths, hidden_state, cell_input, weights
+
+
     def get_kwargs(self) -> Dict[str, Any]:
         return {
             'in_channels': self.in_channels,
