@@ -8,24 +8,24 @@ In order to utilize the program in this repository, a data set must be provided.
 
 # Modules
 
-Several methods of forecasting have been implemented and investigated, with varying degrees of complexity and necessary preparation. The models are implemented in [train_ConvAttention.py](train_ConvAttention.py), [train_AutoConvAttention.py](train_AutoConvAttention.py) and [train_AutoConvAttentionLatent.py](train_AutoConvAttentionLatent.py). On the HPC these may be executed as batch jobs using the [submit.sh](submit.sh) files using ``bsub < submit.sh`` and check jobs using ``bstat (-M) (-C)``. Check the availability of nodes using ``nodestat hpc`` and the length of the queue with ``classstat hpc``.
+Several methods of forecasting have been implemented and investigated, with varying degrees of complexity and necessary preparation. The models are implemented in [train_ConvAttention.py](train_ConvAttention.py), [train_AutoConvAttention.py](train_AutoConvAttention.py) and [train_AutoConvAttentionLatent.py](train_AutoConvAttentionLatent.py). On the HPC these may be executed as batch jobs using the [submit.sh](submit.sh) files using:
 ```sh
 $ bsub < submit.sh
 ```
-and check the jobs using
+and check the running jobs using:
 ```sh
 $ bstat (-M) (-C)
 ```
-Check the availability of nodes using
+Check the availability of nodes using:
 ```sh
 $ nodestat hpc
 ```
-and the length of the queue with
+and the length of the queue with:
 ```sh
 $ classstat hpc
 ```
 
-The different models may also be executed using the [train_test.ipynb](train_test.ipynb) Jupyter Notebooks for a better overview of the running code. These are found in each of the subfolders of the *Models* folder where the auxillary functions for each implementation are also found.
+The different models may also be executed using the [train_test.ipynb](Models/AttentionConvLSTMAutoEncoder/train_test.ipynb) Jupyter Notebooks for a better overview of the running code. These are found in each of the subfolders of the *Models* folder where the auxillary functions for each implementation are also found.
 
 The program is configured to be executed using a single combined netcdf file containing the entire grid data set. This may have to be changed for larger data sets, as compiling and storing these quickly becomes infeasible with increased resolution. This is the case for all three model implementations.
 
