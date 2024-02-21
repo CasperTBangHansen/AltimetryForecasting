@@ -8,6 +8,7 @@ In order to utilize the program in this repository, a data set must be provided.
 
 # Modules
 
+## General
 Several methods of forecasting have been implemented and investigated, with varying degrees of complexity and necessary preparation. The models are implemented in [train_ConvAttention.py](train_ConvAttention.py), [train_AutoConvAttention.py](train_AutoConvAttention.py) and [train_AutoConvAttentionLatent.py](train_AutoConvAttentionLatent.py). On the HPC these may be executed as batch jobs using the [submit.sh](submit.sh) file, which is the job file, using:
 ```sh
 $ bsub < submit.sh
